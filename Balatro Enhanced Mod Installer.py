@@ -11,12 +11,14 @@ import threading
 import pygame
 import time
 import random
+import ctypes
 from tkinter import filedialog
 from tkinter import messagebox
 from pathlib import Path
 
-VERSION_NUMBER = "v1.00"
+VERSION_NUMBER = "x1.25"
 CONSOLE = 1
+STANDALONE = False
 CONFIG_FILE = os.path.join(os.path.expanduser("~"), "Documents", "Balatro_EMI_config.json")
 
 # Get current user and set default download location
@@ -111,10 +113,16 @@ def check_and_download_latest():
             if os.path.exists(exe_path):
                 response = messagebox.askyesno("EMI Updater", "Update found!\nWould you like to download the latest version of EMI?")
                 if response:
-                    subprocess.Popen([str(exe_path)], shell=True)
-                    sys.exit(0)  # Gracefully exit the program
+                    if STANDALONE:
+                        subprocess.Popen([str(exe_path)], shell=True)
+                        sys.exit(0)  # Gracefully exit the program
+                    else:
+                        ctypes.windll.shell32.ShellExecuteW(
+                            None, "runas", exe_path, None, None, 1
+                        )
+                        sys.exit(0)  # Gracefully exit the program
             else:
-                print(f"Executable not found at {exe_path}")
+                print(f"There's a new version of EMI available but no updater installed!")
 
         else:
             print("Already up to date.")
@@ -239,7 +247,6 @@ def download_and_extract_mods(mod_name, repo_owner_and_name, download_path):
         if not download_url:
             download_url = f"https://github.com/{repo_owner_and_name}/archive/refs/heads/main.zip"
             print(f"Downloading source code from: {download_url}")
-            version = "Source Code (main branch)"
                 
             if not download_url:
                 status_var.set(f"No valid asset for {mod_name}.")
@@ -428,6 +435,16 @@ def set_path_location(path_location, location_entry, folder_name):
 
         print(f"New {folder_name} location set to: {selected_folder}")
 
+def open_path_location(path_location):
+    if os.path.exists(path_location):
+        if os.name == "nt":  # Windows
+            os.startfile(path_location)
+        elif os.name == "posix":  # macOS & Linux
+            subprocess.run(["open" if sys.platform == "darwin" else "xdg-open", path_location])
+    else:
+        messagebox.showwarning("Path does not exist", "The path location you are trying to open does not exist.")
+        print("Path does not exist!")
+
 def play(sound, sound_max="", file_type=".ogg"):
 
     #status_var.set(f"Sound played!")
@@ -480,8 +497,12 @@ def setup_download_frame():
     game_location_entry.insert(0, balatro_folder)  # Default to current path
     game_location_entry.grid(row=1, column=0, columnspan=3, padx=10, pady=0, sticky="ew")
 
+    # Open Location button
+    open_game_location_button = tk.Button(download_frame, text="Open", bg=CHIPS_BLUE, activeforeground="white", activebackground=CHIPS_BLUE_PRESSED, command=lambda: (play("cardSlide1"), open_path_location(balatro_folder)), width=15, height=2)
+    open_game_location_button.grid(row=0, column=3, columnspan=1, padx=10, pady=4, sticky="nsew")
+
     # Set Location button
-    update_game_location_button = tk.Button(download_frame, text="Browse...", bg=CHIPS_BLUE, activeforeground="white", activebackground=CHIPS_BLUE_PRESSED, command=lambda: (play("cardSlide1"), set_path_location(balatro_folder, game_location_entry, "Balatro")), width=15, height=2)
+    update_game_location_button = tk.Button(download_frame, text="Change", bg=CHIPS_BLUE, activeforeground="white", activebackground=CHIPS_BLUE_PRESSED, command=lambda: (play("cardSlide1"), set_path_location(balatro_folder, game_location_entry, "Balatro")), width=15, height=2)
     update_game_location_button.grid(row=1, column=3, columnspan=1, padx=10, pady=4, sticky="nsew")
 
     # Reset Location button
@@ -497,8 +518,12 @@ def setup_download_frame():
     mods_location_entry.insert(0, mods_folder)  # Default to current path
     mods_location_entry.grid(row=3, column=0, columnspan=3, padx=10, pady=0, sticky="ew")
 
+    # Open Location button
+    open_mods_location_button = tk.Button(download_frame, text="Open", bg=CHIPS_BLUE, activeforeground="white", activebackground=CHIPS_BLUE_PRESSED, command=lambda: (play("cardSlide1"), open_path_location(mods_folder)), width=15, height=2)
+    open_mods_location_button.grid(row=2, column=3, columnspan=1, padx=10, pady=4, sticky="nsew")
+
     # Set Location button
-    update_mods_location_button = tk.Button(download_frame, text="Browse...", bg=CHIPS_BLUE, activeforeground="white", activebackground=CHIPS_BLUE_PRESSED, command=lambda: (play("cardSlide1"), set_path_location(mods_folder, mods_location_entry, "Mods")), width=15, height=2)
+    update_mods_location_button = tk.Button(download_frame, text="Change", bg=CHIPS_BLUE, activeforeground="white", activebackground=CHIPS_BLUE_PRESSED, command=lambda: (play("cardSlide1"), set_path_location(mods_folder, mods_location_entry, "Mods")), width=15, height=2)
     update_mods_location_button.grid(row=3, column=3, columnspan=1, padx=10, pady=4, sticky="nsew")
 
     # Reset Location button
@@ -511,10 +536,10 @@ def setup_download_frame():
 
     # Define the mods and their associated GitHub URLs and sounds
     mods_info = {
-        "Lovely": {"version": [""], "github_url": LOVELY_GITHUB, "dl_folder": balatro_folder, "sound": "holo1"},
-        "Steamodded": {"version": [""], "github_url": STEAMODDED_GITHUB, "dl_folder": mods_folder, "sound": "polychrome1"},
-        "Deck Creator": {"version": [""], "github_url": DECK_CREATOR_GITHUB, "dl_folder": mods_folder, "sound": "foil1"},
-        "Multiplayer": {"version": [""], "github_url": MULTIPLAYER_GITHUB, "dl_folder": mods_folder, "sound": "negative"}
+        "Lovely": {"version": "", "github_url": LOVELY_GITHUB, "dl_folder": balatro_folder, "sound": "holo1"},
+        "Steamodded": {"version": "", "github_url": STEAMODDED_GITHUB, "dl_folder": mods_folder, "sound": "polychrome1"},
+        "Deck Creator": {"version": "", "github_url": DECK_CREATOR_GITHUB, "dl_folder": mods_folder, "sound": "foil1"},
+        "Multiplayer": {"version": "", "github_url": MULTIPLAYER_GITHUB, "dl_folder": mods_folder, "sound": "negative"}
     }
 
     # Loop through mods_info and create buttons dynamically
@@ -529,7 +554,7 @@ def setup_download_frame():
 
         download_button = tk.Button(
             download_frame,
-            text=f"{mod_name} {mod_info['version']}",
+            text=f"{mod_name}{mod_info['version']}",
             bg=MULT_RED,
             activeforeground="white",
             activebackground=MULT_RED_PRESSED,

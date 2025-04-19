@@ -7,7 +7,7 @@ import sys
 from tkinter import messagebox
 from pathlib import Path
 
-VERSION_NUMBER = "v1.00"
+VERSION_NUMBER = "x1.25"
 CONSOLE = 1
 
 # Path to your icon file
